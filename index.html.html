@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Divam">
+<meta name="theme-color" content="#ede9f8">
+<title>Divam — Daily Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html{font-size:16px;}
+body{font-family:'DM Sans',sans-serif;color:#1a0f3e;min-height:100vh;min-height:100dvh;background:#ede9f8;}
+
+/* BG */
+.bg-wrap{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;}
+.bg-base{position:absolute;inset:0;background:#ede9f8;}
+.blob{position:absolute;border-radius:50%;filter:blur(70px);opacity:0.44;animation:drift linear infinite;}
+.b1{width:500px;height:500px;background:#c8b8f0;top:-120px;left:-100px;animation-duration:30s;}
+.b2{width:400px;height:400px;background:#fac8dc;top:20%;right:-80px;animation-duration:24s;animation-delay:-9s;}
+.b3{width:450px;height:450px;background:#b0dcf4;bottom:-80px;left:10%;animation-duration:34s;animation-delay:-16s;}
+.b4{width:300px;height:300px;background:#baf0c4;bottom:5%;right:10%;animation-duration:27s;animation-delay:-6s;}
+.b5{width:260px;height:260px;background:#f4d0f0;top:45%;left:35%;animation-duration:21s;animation-delay:-12s;}
+@keyframes drift{0%{transform:translate(0,0) scale(1);}25%{transform:translate(40px,-28px) scale(1.06);}50%{transform:translate(-18px,48px) scale(0.94);}75%{transform:translate(26px,18px) scale(1.04);}100%{transform:translate(0,0) scale(1);}}
+
+/* LAYOUT */
+.app{position:relative;z-index:1;width:100%;max-width:1100px;margin:0 auto;padding:24px 20px;}
+
+@media(min-width:821px){
+  body{overflow:hidden;height:100vh;}
+  .app{display:grid;grid-template-columns:1fr 420px;gap:22px;height:calc(100vh - 48px);padding:24px;}
+  .col-l{overflow-y:auto;scrollbar-width:none;height:100%;}
+  .col-l::-webkit-scrollbar{display:none;}
+  .col-r{height:100%;display:flex;flex-direction:column;}
+  .sched-shell{flex:1;min-height:0;display:flex;flex-direction:column;}
+  .sh-scroll{flex:1;min-height:0;overflow-y:auto;}
+}
+@media(max-width:820px){
+  body{overflow:auto;height:auto;}
+  .app{display:flex;flex-direction:column;gap:14px;padding:16px 14px 40px;}
+  .col-l,.col-r{width:100%;}
+  .sched-shell{display:flex;flex-direction:column;}
+  .sh-scroll{overflow:visible;height:auto;}
+  .blob{filter:blur(55px);opacity:0.3;}
+  .b1{width:260px;height:260px;}.b2{width:210px;height:210px;}.b3{width:240px;height:240px;}.b4{width:170px;height:170px;}.b5{width:150px;height:150px;}
+}
+
+/* CARD */
+.card{background:rgba(255,255,255,0.42);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.7);border-radius:20px;overflow:hidden;margin-bottom:14px;}
+
+/* CLOCK */
+.clock-sec{margin-bottom:14px;}
+.date-line{font-size:11px;font-weight:500;color:rgba(80,55,140,0.6);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:4px;}
+.clock-row{display:flex;align-items:baseline;gap:1px;}
+.ck{font-family:'Playfair Display',serif;font-size:clamp(52px,12vw,96px);font-weight:400;color:#2d1058;line-height:0.9;letter-spacing:-0.03em;}
+.ck-col{font-family:'Playfair Display',serif;font-size:clamp(40px,9vw,78px);color:rgba(45,16,88,0.28);line-height:0.9;}
+.ck-ap{font-size:16px;font-weight:300;color:rgba(80,55,140,0.48);margin-left:5px;}
+.greeting{font-family:'Playfair Display',serif;font-style:italic;font-size:clamp(13px,3vw,17px);color:rgba(55,30,100,0.65);margin-top:10px;line-height:1.4;}
+
+/* PROGRESS CARD */
+.pc{padding:14px 16px;}
+.pc-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.pc-title{font-size:11px;font-weight:600;color:rgba(80,55,140,0.55);letter-spacing:0.08em;text-transform:uppercase;}
+.tab-badge{font-size:10px;font-weight:600;padding:2px 9px;border-radius:10px;background:rgba(150,115,200,0.16);color:#5030a0;}
+.pr{margin-bottom:8px;}
+.pr-meta{display:flex;justify-content:space-between;margin-bottom:3px;}
+.pr-name{font-size:11px;font-weight:500;color:rgba(50,25,90,0.72);}
+.pr-pct{font-size:11px;font-weight:600;color:rgba(80,55,140,0.72);}
+.pr-track{height:5px;background:rgba(180,155,220,0.2);border-radius:10px;overflow:hidden;}
+.pr-fill{height:100%;border-radius:10px;transition:width 0.6s cubic-bezier(0.34,1.2,0.64,1);}
+.ov-sep{margin-top:10px;padding-top:10px;border-top:1px solid rgba(180,155,220,0.2);}
+.ov-pct{font-size:14px;font-weight:700;color:#4a28a0;}
+.rings-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+.ring-item{display:flex;flex-direction:column;align-items:center;gap:3px;}
+.ring-lbl{font-size:9px;font-weight:600;color:rgba(80,55,140,0.5);letter-spacing:0.04em;text-transform:uppercase;}
+
+/* ACCORDION */
+.acc-hd{padding:11px 15px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;}
+.acc-title{font-size:12px;font-weight:600;color:rgba(45,20,85,0.82);display:flex;align-items:center;gap:7px;}
+.acc-dot{width:7px;height:7px;border-radius:50%;background:#9c8ae0;animation:ap 2.2s ease-in-out infinite;}
+@keyframes ap{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.45;transform:scale(0.8);}}
+.acc-arrow{font-size:10px;color:rgba(80,55,140,0.5);transition:transform 0.25s;}
+.acc-arrow.open{transform:rotate(180deg);}
+.acc-body{padding:0 15px 14px;display:none;}
+.acc-body.open{display:block;}
+
+/* AI ADVISOR */
+.qchips{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:9px;}
+.qchip{font-size:10px;font-weight:500;padding:3px 9px;border-radius:12px;background:rgba(180,155,220,0.18);border:1px solid rgba(180,155,220,0.28);color:rgba(70,45,120,0.75);cursor:pointer;transition:all 0.15s;}
+.qchip:hover,.qchip:active{background:rgba(180,155,220,0.35);}
+.adv-inp-row{display:flex;gap:6px;align-items:flex-end;}
+.adv-ta{flex:1;font-size:11px;font-family:'DM Sans',sans-serif;color:rgba(25,10,65,0.85);background:rgba(255,255,255,0.65);border:1px solid rgba(180,155,220,0.35);border-radius:10px;padding:8px 10px;outline:none;resize:none;min-height:50px;line-height:1.5;transition:border-color 0.15s;}
+.adv-ta:focus{border-color:rgba(150,115,200,0.6);}
+.adv-ta::placeholder{color:rgba(120,100,160,0.4);}
+.adv-send{padding:8px 14px;border-radius:10px;border:none;cursor:pointer;background:rgba(150,115,200,0.85);color:white;font-size:11px;font-weight:600;font-family:'DM Sans',sans-serif;white-space:nowrap;align-self:flex-end;}
+.adv-send:active{background:rgba(130,95,185,0.95);}
+.adv-thinking{display:none;align-items:center;gap:6px;margin-top:8px;font-size:11px;color:rgba(80,55,140,0.6);}
+.adv-thinking.show{display:flex;}
+.ld{width:6px;height:6px;border-radius:50%;background:rgba(150,115,200,0.65);animation:ldp 1.2s ease-in-out infinite;}
+.ld:nth-child(2){animation-delay:0.2s;}.ld:nth-child(3){animation-delay:0.4s;}
+@keyframes ldp{0%,80%,100%{transform:scale(0.55);opacity:0.35;}40%{transform:scale(1);opacity:1;}}
+.adv-out{display:none;margin-top:9px;padding:11px 13px;background:rgba(228,220,255,0.4);border-radius:12px;border:1px solid rgba(180,155,220,0.25);font-size:11.5px;color:rgba(30,12,72,0.85);line-height:1.7;}
+.adv-out.show{display:block;}
+.adv-source{font-size:9.5px;color:rgba(80,55,140,0.45);margin-top:7px;font-style:italic;}
+
+/* HISTORY */
+.hist-empty{font-size:11px;color:rgba(120,100,160,0.5);font-style:italic;padding:4px 0;}
+.hist-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(180,155,220,0.12);}
+.hist-row:last-child{border-bottom:none;}
+.hist-date{font-size:11px;font-weight:600;color:rgba(45,20,85,0.78);}
+.hist-meta{font-size:10px;color:rgba(80,55,140,0.52);margin-top:1px;}
+.hist-pct{font-size:14px;font-weight:700;color:#6040b0;}
+
+/* QUOTE */
+.quote-card{padding:12px 15px;}
+.q-text{font-family:'Playfair Display',serif;font-style:italic;font-size:12.5px;color:rgba(45,20,85,0.78);line-height:1.65;transition:opacity 0.5s;}
+.q-author{font-size:10px;color:rgba(80,55,140,0.45);margin-top:5px;font-weight:500;letter-spacing:0.05em;text-transform:uppercase;}
+
+/* SCHEDULE SHELL */
+.sched-shell{box-shadow:0 6px 36px rgba(160,130,210,0.14),inset 0 1px 0 rgba(255,255,255,0.8);}
+.sh-header{padding:13px 15px 9px;background:rgba(255,255,255,0.28);border-bottom:1px solid rgba(255,255,255,0.42);flex-shrink:0;}
+.sh-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
+.sh-label .sh-title{font-family:'Playfair Display',serif;font-size:15px;color:#2d1058;}
+.sh-label .sh-sub{font-size:9.5px;color:rgba(80,55,140,0.5);margin-top:1px;}
+.hbtns{display:flex;gap:5px;flex-shrink:0;}
+.hbtn{font-size:10px;font-weight:600;border-radius:8px;padding:3px 9px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.15s;border:1px solid;white-space:nowrap;}
+.edit-btn{color:rgba(80,55,140,0.75);background:rgba(180,155,220,0.14);border-color:rgba(180,155,220,0.35);}
+.edit-btn.on{background:rgba(150,115,200,0.24);border-color:rgba(150,115,200,0.58);color:#4030a0;}
+.rst-btn{color:rgba(180,80,80,0.8);background:rgba(255,200,200,0.18);border-color:rgba(255,160,160,0.35);}
+.rst-btn:active{background:rgba(255,175,175,0.35);}
+.s-tabs{display:flex;gap:4px;margin-top:9px;overflow-x:auto;scrollbar-width:none;}
+.s-tabs::-webkit-scrollbar{display:none;}
+.s-tab{padding:4px 10px;border-radius:18px;font-size:10px;font-weight:500;cursor:pointer;border:1px solid rgba(180,155,220,0.35);background:transparent;color:rgba(80,55,140,0.55);transition:all 0.18s;font-family:'DM Sans',sans-serif;white-space:nowrap;}
+.s-tab.active{background:rgba(150,115,200,0.18);border-color:rgba(150,115,200,0.5);color:#4030a0;font-weight:600;}
+.sh-scroll{padding:9px 13px 16px;scrollbar-width:thin;scrollbar-color:rgba(180,155,220,0.3) transparent;}
+.sh-scroll::-webkit-scrollbar{width:3px;}
+.sh-scroll::-webkit-scrollbar-thumb{background:rgba(180,155,220,0.3);border-radius:4px;}
+.s-panel{display:none;}.s-panel.active{display:block;}
+
+/* DIVIDER */
+.sdiv{display:flex;align-items:center;gap:7px;margin:12px 0 5px;}
+.sdiv-lbl{font-size:8px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:rgba(140,115,185,0.5);white-space:nowrap;}
+.sdiv-line{flex:1;height:1px;background:rgba(180,155,220,0.2);}
+
+/* BLOCK */
+.s-block{display:flex;align-items:stretch;border-radius:11px;overflow:hidden;border:1px solid rgba(255,255,255,0.58);margin-bottom:4px;background:rgba(255,255,255,0.44);backdrop-filter:blur(10px);transition:all 0.18s;position:relative;}
+.s-block.can-tick{cursor:pointer;}
+.s-block.can-tick:hover,.s-block.can-tick:active{background:rgba(255,255,255,0.7);transform:translateX(2px);}
+.s-block.done{background:rgba(225,242,218,0.62);border-color:rgba(145,210,128,0.5);}
+.s-block.done .s-title{text-decoration:line-through;opacity:0.46;}
+.s-block.done .s-bar{opacity:0.26;}
+.s-block.active-now:not(.done){border-color:rgba(150,115,200,0.55);background:rgba(212,202,248,0.52);box-shadow:0 2px 14px rgba(150,115,200,0.2);}
+.s-block.faded{opacity:0.34;border-style:dashed;}
+.s-block.dim{opacity:0.6;}
+.s-time{width:64px;min-width:64px;display:flex;align-items:center;justify-content:center;font-size:8.5px;font-weight:500;color:rgba(100,75,155,0.58);background:rgba(255,255,255,0.26);padding:6px 3px;text-align:center;line-height:1.4;border-right:1px solid rgba(255,255,255,0.45);}
+.s-bar{width:3px;flex-shrink:0;opacity:0.7;}
+.s-content{flex:1;padding:7px 30px 7px 9px;display:flex;flex-direction:column;justify-content:center;}
+.s-title{font-size:11.5px;font-weight:600;color:rgba(22,8,62,0.87);letter-spacing:-0.01em;transition:all 0.18s;}
+.s-sub{font-size:9.5px;color:rgba(80,55,130,0.5);margin-top:1px;line-height:1.4;}
+.s-tag{display:inline-block;font-size:8.5px;font-weight:600;padding:1.5px 7px;border-radius:4px;margin-top:3px;align-self:flex-start;}
+.chk{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:18px;height:18px;border-radius:50%;border:1.5px solid rgba(140,115,185,0.3);background:rgba(255,255,255,0.5);display:flex;align-items:center;justify-content:center;pointer-events:none;transition:all 0.18s;}
+.s-block.done .chk{background:rgba(88,188,98,0.9);border-color:rgba(68,170,78,0.8);}
+.chk svg{display:none;width:10px;height:10px;}
+.s-block.done .chk svg{display:block;}
+.now-badge{display:none;font-size:7px;font-weight:700;color:#6030c0;background:rgba(170,145,225,0.28);padding:1px 6px;border-radius:7px;margin-left:4px;letter-spacing:0.04em;text-transform:uppercase;animation:nb 2s ease-in-out infinite;}
+@keyframes nb{0%,100%{opacity:1;}50%{opacity:0.42;}}
+
+/* edit */
+.ec{display:none;position:absolute;right:0;top:0;bottom:0;align-items:center;gap:3px;padding:0 6px;background:rgba(240,236,255,0.82);backdrop-filter:blur(8px);border-left:1px solid rgba(180,155,220,0.2);}
+.s-block.editing .ec{display:flex;}.s-block.editing .chk{display:none;}
+.ecb{width:22px;height:22px;border-radius:6px;border:none;cursor:pointer;font-size:11px;background:transparent;display:flex;align-items:center;justify-content:center;transition:all 0.15s;}
+.ecb:hover,.ecb:active{background:rgba(180,155,220,0.25);}.ecb.del:hover,.ecb.del:active{background:rgba(255,170,170,0.35);}
+.bef{display:none;position:absolute;inset:0;background:rgba(234,228,255,0.97);backdrop-filter:blur(14px);border-radius:11px;padding:7px 11px;z-index:20;flex-direction:column;gap:5px;}
+.bef.open{display:flex;}
+.ef-row{display:flex;gap:5px;align-items:center;}
+.ef-lbl{font-size:9px;font-weight:600;color:rgba(80,55,140,0.56);letter-spacing:0.05em;text-transform:uppercase;min-width:30px;}
+.ef-inp{flex:1;font-size:11px;font-family:'DM Sans',sans-serif;color:rgba(25,10,65,0.85);background:rgba(255,255,255,0.72);border:1px solid rgba(180,155,220,0.38);border-radius:6px;padding:3px 7px;outline:none;}
+.ef-inp:focus{border-color:rgba(150,115,200,0.62);}
+.ef-acts{display:flex;gap:4px;justify-content:flex-end;margin-top:2px;}
+.ef-save{font-size:10px;font-weight:600;padding:4px 11px;border-radius:6px;border:none;cursor:pointer;background:rgba(150,115,200,0.82);color:white;font-family:'DM Sans',sans-serif;}
+.ef-cancel{font-size:10px;font-weight:500;padding:4px 8px;border-radius:6px;border:1px solid rgba(180,155,220,0.35);cursor:pointer;background:transparent;color:rgba(80,55,140,0.7);font-family:'DM Sans',sans-serif;}
+.add-row{display:none;align-items:center;gap:7px;margin:5px 0 2px;padding:6px 9px;border:1.5px dashed rgba(180,155,220,0.35);border-radius:10px;cursor:pointer;transition:all 0.18s;}
+.add-row:hover,.add-row:active{background:rgba(255,255,255,0.38);border-color:rgba(150,115,200,0.45);}
+.add-row.show{display:flex;}
+.add-icon{width:15px;height:15px;border-radius:50%;background:rgba(150,115,200,0.2);display:flex;align-items:center;justify-content:center;font-size:11px;color:rgba(80,55,140,0.7);flex-shrink:0;line-height:1;}
+.add-lbl{font-size:10px;font-weight:500;color:rgba(80,55,140,0.55);}
+.add-form{display:none;background:rgba(234,228,255,0.92);backdrop-filter:blur(12px);border:1px solid rgba(180,155,220,0.35);border-radius:12px;padding:10px 12px;margin-top:5px;flex-direction:column;gap:5px;}
+.add-form.open{display:flex;}
+
+/* colors */
+.c-health .s-bar{background:#66bb9a;}.c-health .s-tag{background:rgba(102,187,154,0.14);color:#2e7d5e;}
+.c-varc   .s-bar{background:#9c8ae0;}.c-varc   .s-tag{background:rgba(156,138,224,0.14);color:#4a30a0;}
+.c-quant  .s-bar{background:#64a8d8;}.c-quant  .s-tag{background:rgba(100,168,216,0.14);color:#1a5890;}
+.c-lrdi   .s-bar{background:#e8845a;}.c-lrdi   .s-tag{background:rgba(232,132,90,0.14);color:#9a3818;}
+.c-upsc   .s-bar{background:#88c06a;}.c-upsc   .s-tag{background:rgba(136,192,106,0.14);color:#3a6415;}
+.c-work   .s-bar{background:#a0a8b8;}.c-work   .s-tag{background:rgba(160,168,184,0.12);color:#485068;}
+.c-etsy   .s-bar{background:#e0a050;}.c-etsy   .s-tag{background:rgba(224,160,80,0.14);color:#885010;}
+.c-rest   .s-bar{background:#b0bcc8;}.c-rest   .s-tag{background:rgba(176,188,200,0.10);color:#586580;}
+.c-fixed  .s-bar{background:#e07878;}.c-fixed  .s-tag{background:rgba(224,120,120,0.14);color:#882020;}
+.c-read   .s-bar{background:#e090b8;}.c-read   .s-tag{background:rgba(224,144,184,0.14);color:#882855;}
+.c-review .s-bar{background:#a890d8;}.c-review .s-tag{background:rgba(168,144,216,0.14);color:#4a28a0;}
+.c-ppt    .s-bar{background:#60c0a0;}.c-ppt    .s-tag{background:rgba(96,192,160,0.14);color:#186850;}
+.c-buffer .s-bar{background:#c8b060;}.c-buffer .s-tag{background:rgba(200,176,96,0.14);color:#785808;}
+
+/* stagger */
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+.s-panel.active .s-block{animation:fadeUp 0.2s ease both;}
+.s-panel.active .s-block:nth-child(1){animation-delay:.02s}.s-panel.active .s-block:nth-child(2){animation-delay:.04s}
+.s-panel.active .s-block:nth-child(3){animation-delay:.06s}.s-panel.active .s-block:nth-child(4){animation-delay:.08s}
+.s-panel.active .s-block:nth-child(5){animation-delay:.10s}.s-panel.active .s-block:nth-child(6){animation-delay:.12s}
+.s-panel.active .s-block:nth-child(7){animation-delay:.14s}.s-panel.active .s-block:nth-child(8){animation-delay:.16s}
+.s-panel.active .s-block:nth-child(9){animation-delay:.17s}.s-panel.active .s-block:nth-child(10){animation-delay:.18s}
+.s-panel.active .s-block:nth-child(11){animation-delay:.19s}.s-panel.active .s-block:nth-child(12){animation-delay:.20s}
+.s-panel.active .s-block:nth-child(13){animation-delay:.21s}.s-panel.active .s-block:nth-child(14){animation-delay:.22s}
+.s-panel.active .s-block:nth-child(15){animation-delay:.23s}.s-panel.active .s-block:nth-child(16){animation-delay:.24s}
+.s-panel.active .s-block:nth-child(17){animation-delay:.25s}.s-panel.active .s-block:nth-child(18){animation-delay:.26s}
+.s-panel.active .s-block:nth-child(19){animation-delay:.27s}.s-panel.active .s-block:nth-child(20){animation-delay:.28s}
+
+/* install banner */
+.install-banner{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:rgba(150,115,200,0.92);backdrop-filter:blur(12px);color:white;padding:9px 18px;border-radius:22px;font-size:12px;font-weight:600;cursor:pointer;z-index:999;font-family:'DM Sans',sans-serif;box-shadow:0 4px 20px rgba(120,90,180,0.35);white-space:nowrap;}
+</style>
+</head>
+<body>
+
+<div class="bg-wrap">
+  <div class="bg-base"></div>
+  <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+  <div class="blob b4"></div><div class="blob b5"></div>
+</div>
+
+<div class="app">
+
+<!-- LEFT -->
+<div class="col-l">
+
+  <div class="clock-sec">
+    <div class="date-line" id="date-line">Thursday, March 19</div>
+    <div class="clock-row">
+      <span class="ck" id="ch">9</span>
+      <span class="ck-col" id="colon">:</span>
+      <span class="ck" id="cm">41</span>
+      <span class="ck-ap" id="ampm">AM</span>
+    </div>
+    <div class="greeting" id="greeting">Good morning, Divam.</div>
+  </div>
+
+  <!-- progress -->
+  <div class="card">
+    <div class="pc">
+      <div class="pc-hd">
+        <span class="pc-title">Today's Progress</span>
+        <span class="tab-badge" id="tab-badge">Standard</span>
+      </div>
+      <div class="pr"><div class="pr-meta"><span class="pr-name">📚 CAT Study</span><span class="pr-pct" id="cat-pct">0/3</span></div><div class="pr-track"><div class="pr-fill" id="cat-bar" style="width:0%;background:linear-gradient(90deg,#c5a8f0,#8870d8)"></div></div></div>
+      <div class="pr"><div class="pr-meta"><span class="pr-name">⚖️ UPSC</span><span class="pr-pct" id="upsc-pct">0/2</span></div><div class="pr-track"><div class="pr-fill" id="upsc-bar" style="width:0%;background:linear-gradient(90deg,#a8e0a0,#60b050)"></div></div></div>
+      <div class="pr"><div class="pr-meta"><span class="pr-name">💼 Work</span><span class="pr-pct" id="work-pct">0/2</span></div><div class="pr-track"><div class="pr-fill" id="work-bar" style="width:0%;background:linear-gradient(90deg,#b8c8e0,#7890b0)"></div></div></div>
+      <div class="pr"><div class="pr-meta"><span class="pr-name">🛍️ Etsy</span><span class="pr-pct" id="etsy-pct">0/1</span></div><div class="pr-track"><div class="pr-fill" id="etsy-bar" style="width:0%;background:linear-gradient(90deg,#f0c880,#c88830)"></div></div></div>
+      <div class="pr"><div class="pr-meta"><span class="pr-name">🏃 Health</span><span class="pr-pct" id="health-pct">0/2</span></div><div class="pr-track"><div class="pr-fill" id="health-bar" style="width:0%;background:linear-gradient(90deg,#90ddb8,#30a070)"></div></div></div>
+      <div class="pr ov-sep" style="margin-bottom:0">
+        <div class="pr-meta"><span class="pr-name" style="font-weight:600;color:rgba(45,16,88,0.82)">Overall — this tab</span><span class="ov-pct" id="ov-pct">0%</span></div>
+        <div class="pr-track" style="height:7px"><div class="pr-fill" id="ov-bar" style="width:0%;background:linear-gradient(90deg,#c8a8f8,#8858e0,#60a8f0)"></div></div>
+      </div>
+      <div class="rings-row" id="rings"></div>
+    </div>
+  </div>
+
+  <!-- AI Advisor -->
+  <div class="card">
+    <div class="acc-hd" onclick="toggleAcc('adv')">
+      <div class="acc-title"><div class="acc-dot"></div>AI Day Advisor</div>
+      <span class="acc-arrow" id="adv-arrow">▼</span>
+    </div>
+    <div class="acc-body" id="adv-body">
+      <div class="qchips">
+        <div class="qchip" onclick="fillQ('Meeting ran late till 2 PM')">Meeting ran late</div>
+        <div class="qchip" onclick="fillQ('Woke up at 6:30 instead of 5:30')">Late wake-up</div>
+        <div class="qchip" onclick="fillQ('Feeling low energy today')">Low energy</div>
+        <div class="qchip" onclick="fillQ('Skipped LRDI this morning')">Skipped LRDI</div>
+        <div class="qchip" onclick="fillQ('Skipped run today')">Skipped run</div>
+        <div class="qchip" onclick="fillQ('Motivation boost please')">Motivation</div>
+      </div>
+      <div class="adv-inp-row">
+        <textarea class="adv-ta" id="adv-ta" placeholder="Describe your situation — e.g. 'Meeting ran till 2, skipped LRDI, feeling tired.' Press Enter or tap Advise." rows="3"></textarea>
+        <button class="adv-send" onclick="runAdvisor()">Advise →</button>
+      </div>
+      <div class="adv-thinking" id="adv-thinking"><div class="ld"></div><div class="ld"></div><div class="ld"></div><span>Analysing your day…</span></div>
+      <div class="adv-out" id="adv-out"></div>
+    </div>
+  </div>
+
+  <!-- History -->
+  <div class="card">
+    <div class="acc-hd" onclick="toggleAcc('hist')">
+      <div class="acc-title" style="gap:6px;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:rgba(80,55,140,0.55);">📅 History</div>
+      <span class="acc-arrow" id="hist-arrow">▼</span>
+    </div>
+    <div class="acc-body" id="hist-body">
+      <div id="hist-ctr"><div class="hist-empty">No history yet. Tick blocks to start tracking!</div></div>
+    </div>
+  </div>
+
+  <!-- Quote -->
+  <div class="card quote-card" style="margin-bottom:0">
+    <div class="q-text" id="q-text">"Discipline is choosing between what you want now and what you want most."</div>
+    <div class="q-author" id="q-author">— Abraham Lincoln</div>
+  </div>
+
+</div><!-- /col-l -->
+
+<!-- RIGHT -->
+<div class="col-r">
+  <div class="card sched-shell" style="margin-bottom:0">
+    <div class="sh-header">
+      <div class="sh-top">
+        <div class="sh-label">
+          <div class="sh-title">Divam's Schedule</div>
+          <div class="sh-sub" id="sh-sub">Tap any block to mark it done</div>
+        </div>
+        <div class="hbtns">
+          <button class="hbtn edit-btn" id="edit-btn" onclick="toggleEdit()">✏️ Edit</button>
+          <button class="hbtn rst-btn" onclick="resetTab()">↺ Reset</button>
+        </div>
+      </div>
+      <div class="s-tabs">
+        <button class="s-tab active" onclick="switchTab('ideal',this)">Standard</button>
+        <button class="s-tab" onclick="switchTab('late',this)">Late wake</button>
+        <button class="s-tab" onclick="switchTab('monday',this)">Monday</button>
+      </div>
+    </div>
+    <div class="sh-scroll" id="sh-scroll"></div>
+  </div>
+</div>
+
+</div><!-- /app -->
+
+<script>
+/* ════════════════════════════
+   SCHEDULE DATA
+════════════════════════════ */
+const TABS={
+  ideal:{label:'Standard',sections:[
+    {title:'Early morning — deep study',blocks:[
+      {id:'newspaper',cat:'upsc', clr:'c-varc',  t:'5:30–6:30', title:'The Hindu',           sub:'1h · editorials · VARC + UPSC prep',      tag:'VARC+UPSC',s:330,e:390},
+      {id:'run',      cat:'health',clr:'c-health',t:'6:30–7:10', title:'Run + freshen up',    sub:'40 min · straight to desk',               tag:'HEALTH',   s:390,e:430},
+      {id:'varc',     cat:'cat',  clr:'c-varc',  t:'7:10–8:10', title:'VARC lecture (1h)',   sub:'Peak focus post-run · non-negotiable',    tag:'VARC',     s:430,e:490},
+      {id:'zero',     cat:'cat',  clr:'c-read',  t:'8:10–8:40', title:'Zero to One (30 min)',sub:'~15 days · becomes RC passage after',     tag:'READING',  s:490,e:520},
+      {id:'lrdi',     cat:'cat',  clr:'c-lrdi',  t:'8:40–9:40', title:'LRDI (1h)',           sub:'Sharpest window · sets practice',         tag:'LRDI',     s:520,e:580},
+      {id:'bfast',    cat:'rest', clr:'c-rest',  t:'9:40–10:00',title:'Breakfast',           sub:'',                                        tag:'REST',     s:580,e:600},
+    ]},
+    {title:'Work block',blocks:[
+      {id:'work1',cat:'work',clr:'c-work',t:'10:00–1:00',title:'Meeting + work tasks',sub:'If meeting ends early, continue until 1 PM',tag:'WORK',s:600,e:780},
+      {id:'nap',  cat:'rest',clr:'c-rest',t:'1:00–2:00', title:'Rest / nap + lunch',  sub:'',                                         tag:'REST',s:780,e:840},
+      {id:'work2',cat:'work',clr:'c-work',t:'2:00–3:30', title:'Official work',       sub:'1.5h · tasks and follow-ups',              tag:'WORK',s:840,e:930},
+    ]},
+    {title:'Afternoon — Quant + buffer',blocks:[
+      {id:'quant',  cat:'cat',  clr:'c-quant', t:'3:30–4:30',title:'Quant (1h) — protected',sub:'Number System → Algebra',   tag:'QUANT', s:930, e:990},
+      {id:'buffer', cat:'rest', clr:'c-buffer',t:'4:30–5:30',title:'Buffer / overflow',     sub:'Extra Quant OR work overflow',tag:'BUFFER',s:990, e:1050},
+      {id:'tuition',cat:'fixed',clr:'c-fixed', t:'5:30–6:30',title:'English tuition',       sub:'Fixed · immovable',         tag:'FIXED', s:1050,e:1110},
+      {id:'walk',   cat:'health',clr:'c-health',t:'6:30–7:00',title:'Evening walk',         sub:'30 min · reset before Etsy',tag:'HEALTH',s:1110,e:1140},
+    ]},
+    {title:'Evening — Etsy + UPSC',blocks:[
+      {id:'etsy',  cat:'etsy', clr:'c-etsy',  t:'7:00–9:10',  title:'Etsy work (2h 10m)',   sub:'Design · listing · marketing',       tag:'ETSY',  s:1140,e:1270},
+      {id:'dinner',cat:'rest', clr:'c-rest',  t:'9:10–9:30',  title:'Dinner',               sub:'',                                   tag:'REST',  s:1270,e:1290},
+      {id:'laxmi', cat:'upsc', clr:'c-upsc',  t:'9:30–10:30', title:'Laxmikant — Polity 1h',sub:'~1.5 ch/day · 47 days total',        tag:'UPSC',  s:1290,e:1350},
+      {id:'review',cat:'rest', clr:'c-review',t:'10:30–11:00',title:'Daily review',         sub:"What's done? Phone down by 11.",     tag:'REVIEW',s:1350,e:1380},
+    ]},
+  ]},
+  late:{label:'Late wake',sections:[
+    {title:'Morning — compressed',blocks:[
+      {id:'lw-news',cat:'upsc',  clr:'c-varc',  t:'6:00/6:30',title:'The Hindu (1h)',         sub:'Start immediately · never skip',    tag:'VARC+UPSC',s:360,e:420},
+      {id:'lw-run', cat:'health',clr:'c-health',t:'+1h after', title:'Run (40 min)',           sub:'Shifted but still happens',         tag:'HEALTH'},
+      {id:'lw-varc',cat:'cat',   clr:'c-varc',  t:'After run', title:'VARC lecture (1h)',      sub:'30–60 min later · still happens',   tag:'VARC'},
+      {id:'lw-read',cat:'cat',   clr:'c-read',  t:'After lec.',title:'Zero to One (30 min)',   sub:'',                                  tag:'READING'},
+      {id:'lw-skip',cat:'skip',  clr:'c-lrdi',  t:'Skipped',  title:'LRDI — moves to 3:30 PM',sub:"Don't compress in the morning",     tag:'LRDI→PM',faded:true},
+    ]},
+    {title:'Work',blocks:[
+      {id:'lw-w1',cat:'work',clr:'c-work',t:'10:00–1:00',title:'Meeting + work',sub:'',tag:'WORK',s:600,e:780},
+      {id:'lw-r', cat:'rest',clr:'c-rest',t:'1:00–2:00', title:'Rest + lunch',  sub:'',tag:'REST',s:780,e:840},
+      {id:'lw-w2',cat:'work',clr:'c-work',t:'2:00–3:30', title:'Official work', sub:'',tag:'WORK',s:840,e:930},
+    ]},
+    {title:'LRDI rescue + evening',blocks:[
+      {id:'lw-lrdi', cat:'cat',   clr:'c-lrdi',  t:'3:30–4:30', title:'LRDI (1h) — rescued',    sub:'Buffer slot · never skipped',    tag:'LRDI',      s:930, e:990},
+      {id:'lw-quant',cat:'cat',   clr:'c-quant', t:'4:30–5:30', title:'Quant — if energy allows',sub:'Optional · carry forward if tired',tag:'QUANT',  s:990, e:1050,dim:true},
+      {id:'lw-tuit', cat:'fixed', clr:'c-fixed', t:'5:30–6:30', title:'English tuition',         sub:'',                               tag:'FIXED',     s:1050,e:1110},
+      {id:'lw-walk', cat:'health',clr:'c-health',t:'6:30–7:00', title:'Evening walk',            sub:'',                               tag:'HEALTH',    s:1110,e:1140},
+      {id:'lw-etsy', cat:'etsy',  clr:'c-etsy',  t:'7:00–9:10', title:'Etsy (2h 10m)',          sub:'No exceptions',                  tag:'ETSY',      s:1140,e:1270},
+      {id:'lw-din',  cat:'rest',  clr:'c-rest',  t:'9:10–9:30', title:'Dinner',                  sub:'',                              tag:'REST',      s:1270,e:1290},
+      {id:'lw-lax',  cat:'upsc',  clr:'c-upsc',  t:'9:30–10:30',title:'Laxmikant (1h)',          sub:'',                              tag:'UPSC',      s:1290,e:1350},
+      {id:'lw-rev',  cat:'rest',  clr:'c-review',t:'10:30–11:00',title:'Daily review',           sub:'',                              tag:'REVIEW',    s:1350,e:1380},
+    ]},
+  ]},
+  monday:{label:'Monday',sections:[
+    {title:'Morning + work',blocks:[
+      {id:'mo-news', cat:'upsc',  clr:'c-varc',  t:'5:30–6:30', title:'The Hindu',      sub:'',tag:'VARC+UPSC',s:330,e:390},
+      {id:'mo-run',  cat:'health',clr:'c-health',t:'6:30–7:10', title:'Run',            sub:'',tag:'HEALTH',   s:390,e:430},
+      {id:'mo-varc', cat:'cat',   clr:'c-varc',  t:'7:10–8:10', title:'VARC lecture',   sub:'',tag:'VARC',     s:430,e:490},
+      {id:'mo-read', cat:'cat',   clr:'c-read',  t:'8:10–8:40', title:'Zero to One',    sub:'',tag:'READING',  s:490,e:520},
+      {id:'mo-lrdi', cat:'cat',   clr:'c-lrdi',  t:'8:40–9:40', title:'LRDI',           sub:'',tag:'LRDI',     s:520,e:580},
+      {id:'mo-bfast',cat:'rest',  clr:'c-rest',  t:'9:40–10:00',title:'Breakfast',      sub:'',tag:'REST',     s:580,e:600},
+      {id:'mo-w1',   cat:'work',  clr:'c-work',  t:'10:00–1:00',title:'Meeting + work', sub:'',tag:'WORK',     s:600,e:780},
+      {id:'mo-rest', cat:'rest',  clr:'c-rest',  t:'1:00–2:00', title:'Rest + lunch',   sub:'',tag:'REST',     s:780,e:840},
+      {id:'mo-w2',   cat:'work',  clr:'c-work',  t:'2:00–3:30', title:'Official work',  sub:'',tag:'WORK',     s:840,e:930},
+    ]},
+    {title:'Afternoon + evening',blocks:[
+      {id:'mo-q',   cat:'cat',  clr:'c-quant', t:'3:30–4:30', title:'Quant (1h) — never skip',    sub:'Buffer takes the slides',     tag:'QUANT',       s:930, e:990},
+      {id:'mo-pp1', cat:'rest', clr:'c-ppt',   t:'4:30–5:30', title:'Presentation — part 1',      sub:'Structure + content',         tag:'PRESENTATION',s:990, e:1050},
+      {id:'mo-tuit',cat:'fixed',clr:'c-fixed', t:'5:30–6:30', title:'English tuition',            sub:'',                            tag:'FIXED',       s:1050,e:1110},
+      {id:'mo-walk',cat:'health',clr:'c-health',t:'6:30–7:00',title:'Evening walk',               sub:'',                            tag:'HEALTH',      s:1110,e:1140},
+      {id:'mo-pp2', cat:'rest', clr:'c-ppt',   t:'7:00–7:30', title:'Presentation — finish',      sub:'Total 1.5h · done by 7:30',  tag:'PRESENTATION',s:1140,e:1170},
+      {id:'mo-etsy',cat:'etsy', clr:'c-etsy',  t:'7:30–9:00', title:'Etsy work (1.5h)',           sub:'Reduced Monday only',         tag:'ETSY',        s:1170,e:1260},
+      {id:'mo-din', cat:'rest', clr:'c-rest',  t:'9:00–9:30', title:'Dinner',                     sub:'',                            tag:'REST',        s:1260,e:1290},
+      {id:'mo-lax', cat:'upsc', clr:'c-upsc',  t:'9:30–10:30',title:'Laxmikant (1h)',             sub:'',                            tag:'UPSC',        s:1290,e:1350},
+      {id:'mo-rev', cat:'rest', clr:'c-review',t:'10:30–11:00',title:'Review + slide check',      sub:'Phone down · sleep by 11',   tag:'REVIEW',      s:1350,e:1380},
+    ]},
+  ]},
+};
+
+/* ════════════════════════════
+   STATE & STORAGE
+════════════════════════════ */
+let curTab='ideal', editMode=false, addSec=null;
+
+function todayStr(){
+  const n=new Date();
+  return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;
+}
+function stKey(tab){ return `dv3-${tab}-${todayStr()}`; }
+
+const done={
+  ideal: new Set(JSON.parse(localStorage.getItem(stKey('ideal'))||'[]')),
+  late:  new Set(JSON.parse(localStorage.getItem(stKey('late'))||'[]')),
+  monday:new Set(JSON.parse(localStorage.getItem(stKey('monday'))||'[]')),
+};
+
+function persist(tab){
+  localStorage.setItem(stKey(tab), JSON.stringify([...done[tab]]));
+  logHistory(tab);
+}
+
+function logHistory(tab){
+  let total=0, dn=0;
+  TABS[tab].sections.forEach(s=>s.blocks.forEach(b=>{
+    if(b.faded||b.cat==='skip') return;
+    total++; if(done[tab].has(b.id)) dn++;
+  }));
+  const pct=total>0?Math.round(dn/total*100):0;
+  const entry={date:todayStr(),tab,label:TABS[tab].label,pct,done:dn,total};
+  localStorage.setItem(`dv3-hist-${todayStr()}-${tab}`, JSON.stringify(entry));
+}
+
+function loadHistory(){
+  const out=[];
+  for(let i=0;i<localStorage.length;i++){
+    const k=localStorage.key(i);
+    if(k&&k.startsWith('dv3-hist-')){
+      try{ out.push(JSON.parse(localStorage.getItem(k))); }catch(e){}
+    }
+  }
+  return out.sort((a,b)=>b.date.localeCompare(a.date)||b.tab.localeCompare(a.tab));
+}
+
+/* ════════════════════════════
+   RENDER
+════════════════════════════ */
+function render(){
+  const scroll=document.getElementById('sh-scroll');
+  scroll.innerHTML='';
+  Object.keys(TABS).forEach(tabId=>{
+    const panel=document.createElement('div');
+    panel.className='s-panel'+(tabId===curTab?' active':'');
+    panel.id='p-'+tabId;
+    TABS[tabId].sections.forEach((sec,si)=>{
+      const dv=document.createElement('div');
+      dv.className='sdiv';
+      dv.innerHTML=`<span class="sdiv-lbl">${sec.title}</span><div class="sdiv-line"></div>`;
+      panel.appendChild(dv);
+      sec.blocks.forEach(b=>panel.appendChild(mkBlock(b,tabId)));
+      const ar=document.createElement('div');
+      ar.className='add-row'; ar.id=`ar-${tabId}-${si}`;
+      ar.innerHTML=`<div class="add-icon">+</div><div class="add-lbl">Add block here</div>`;
+      ar.onclick=()=>openAdd(tabId,si);
+      panel.appendChild(ar);
+    });
+    const af=document.createElement('div');
+    af.className='add-form'; af.id=`af-${tabId}`;
+    af.innerHTML=`
+      <div class="ef-row"><span class="ef-lbl">Title</span><input class="ef-inp" id="af-t-${tabId}" placeholder="Block name"/></div>
+      <div class="ef-row"><span class="ef-lbl">Time</span><input class="ef-inp" id="af-tm-${tabId}" placeholder="e.g. 10:00–11:00"/></div>
+      <div class="ef-row"><span class="ef-lbl">Tag</span><input class="ef-inp" id="af-tg-${tabId}" placeholder="e.g. STUDY"/></div>
+      <div class="ef-row"><span class="ef-lbl">Cat</span><select class="ef-inp" id="af-c-${tabId}">
+        <option value="cat">CAT</option><option value="upsc">UPSC</option><option value="work">Work</option>
+        <option value="etsy">Etsy</option><option value="health">Health</option><option value="rest">Rest</option>
+      </select></div>
+      <div class="ef-acts">
+        <button class="ef-cancel" onclick="closeAdd('${tabId}')">Cancel</button>
+        <button class="ef-save" onclick="saveAdd('${tabId}')">Add</button>
+      </div>`;
+    panel.appendChild(af);
+    scroll.appendChild(panel);
+  });
+  applyDone();
+  if(editMode) applyEditMode(true);
+  highlightNow();
+}
+
+function mkBlock(b,tabId){
+  const el=document.createElement('div');
+  const canTick=!b.faded&&b.cat!=='skip';
+  el.className=`s-block ${b.clr}${b.faded?' faded':''}${b.dim?' dim':''}${canTick?' can-tick':''}`;
+  el.dataset.id=b.id; el.dataset.tab=tabId; el.dataset.cat=b.cat||'rest';
+  if(b.s) el.dataset.s=b.s;
+  if(b.e) el.dataset.e=b.e;
+  if(canTick) el.addEventListener('click',e=>onTick(e,el));
+  el.innerHTML=`
+    <div class="s-time">${b.t}</div>
+    <div class="s-bar"></div>
+    <div class="s-content">
+      <div class="s-title">${b.title}${b.s?'<span class="now-badge">NOW</span>':''}</div>
+      ${b.sub?`<div class="s-sub">${b.sub}</div>`:''}
+      <span class="s-tag">${b.tag}</span>
+    </div>
+    ${canTick?`<div class="chk"><svg viewBox="0 0 12 12" fill="none"><polyline points="1.5,6 4.5,9.5 10.5,2.5" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>`:''}
+    <div class="ec">
+      <button class="ecb" onclick="openBef(event,'${b.id}','${tabId}')">✏️</button>
+      <button class="ecb del" onclick="delBlock(event,'${b.id}','${tabId}')">🗑️</button>
+    </div>
+    <div class="bef" id="bef-${b.id}">
+      <div class="ef-row"><span class="ef-lbl">Title</span><input class="ef-inp" id="bef-t-${b.id}" value="${b.title}"/></div>
+      <div class="ef-row"><span class="ef-lbl">Time</span><input class="ef-inp" id="bef-tm-${b.id}" value="${b.t}"/></div>
+      <div class="ef-row"><span class="ef-lbl">Tag</span><input class="ef-inp" id="bef-tg-${b.id}" value="${b.tag}"/></div>
+      <div class="ef-row"><span class="ef-lbl">Note</span><input class="ef-inp" id="bef-s-${b.id}" value="${b.sub||''}"/></div>
+      <div class="ef-acts">
+        <button class="ef-cancel" onclick="closeBef(event,'${b.id}')">Cancel</button>
+        <button class="ef-save" onclick="saveBef(event,'${b.id}','${tabId}')">Save</button>
+      </div>
+    </div>`;
+  return el;
+}
+
+function applyDone(){
+  Object.keys(TABS).forEach(tab=>{
+    document.querySelectorAll(`#p-${tab} .s-block[data-id]`).forEach(el=>{
+      el.classList.toggle('done', done[tab].has(el.dataset.id));
+    });
+  });
+}
+
+/* ════════════════════════════
+   TICK
+════════════════════════════ */
+function onTick(e,el){
+  if(editMode) return;
+  if(e.target.closest('.bef')||e.target.closest('.ec')) return;
+  const id=el.dataset.id, tab=el.dataset.tab;
+  if(done[tab].has(id)){ done[tab].delete(id); el.classList.remove('done'); }
+  else { done[tab].add(id); el.classList.add('done'); }
+  persist(tab);
+  updateProgress();
+}
+
+/* ════════════════════════════
+   RESET — three-step fix
+════════════════════════════ */
+function resetTab(){
+  const label=TABS[curTab].label;
+  if(!confirm(`Untick all blocks for "${label}" today?\n\nThis will clear your ticks for today only. History from previous days is kept.`)) return;
+  // Step 1: clear memory
+  done[curTab]=new Set();
+  // Step 2: clear storage for today
+  localStorage.setItem(stKey(curTab), JSON.stringify([]));
+  // Step 3: remove done class from every block in this panel
+  const panel=document.getElementById('p-'+curTab);
+  if(panel) panel.querySelectorAll('.s-block').forEach(el=>el.classList.remove('done'));
+  // Step 4: re-highlight NOW blocks
+  highlightNow();
+  // Step 5: update all progress
+  updateProgress();
+  // Step 6: log the reset in history
+  logHistory(curTab);
+  renderHistory();
+}
+
+/* ════════════════════════════
+   TAB SWITCH
+════════════════════════════ */
+function switchTab(id,el){
+  if(editMode) toggleEdit();
+  curTab=id;
+  document.querySelectorAll('.s-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.s-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('p-'+id).classList.add('active');
+  el.classList.add('active');
+  document.getElementById('tab-badge').textContent=TABS[id].label;
+  document.getElementById('sh-scroll').scrollTo({top:0,behavior:'smooth'});
+  updateProgress();
+  highlightNow();
+}
+
+/* ════════════════════════════
+   PROGRESS
+════════════════════════════ */
+function getCatTotals(tab){
+  const t={cat:0,upsc:0,work:0,etsy:0,health:0};
+  TABS[tab].sections.forEach(s=>s.blocks.forEach(b=>{
+    if(b.faded||b.cat==='skip') return;
+    if(t[b.cat]!==undefined) t[b.cat]++;
+  }));
+  return t;
+}
+
+function updateProgress(){
+  const tab=curTab, d=done[tab], tots=getCatTotals(tab);
+  const cnts={cat:0,upsc:0,work:0,etsy:0,health:0};
+  TABS[tab].sections.forEach(s=>s.blocks.forEach(b=>{
+    if(b.faded||b.cat==='skip') return;
+    if(d.has(b.id)&&cnts[b.cat]!==undefined) cnts[b.cat]++;
+  }));
+  const setB=(id,n,t)=>{ const p=t>0?Math.min(100,Math.round(n/t*100)):0; const el=document.getElementById(id); if(el) el.style.width=p+'%'; };
+  setB('cat-bar',cnts.cat,tots.cat); setB('upsc-bar',cnts.upsc,tots.upsc);
+  setB('work-bar',cnts.work,tots.work); setB('etsy-bar',cnts.etsy,tots.etsy); setB('health-bar',cnts.health,tots.health);
+  const setP=(id,n,t)=>{ const el=document.getElementById(id); if(el) el.textContent=`${n}/${t}`; };
+  setP('cat-pct',cnts.cat,tots.cat); setP('upsc-pct',cnts.upsc,tots.upsc);
+  setP('work-pct',cnts.work,tots.work); setP('etsy-pct',cnts.etsy,tots.etsy); setP('health-pct',cnts.health,tots.health);
+
+  let total=0, dn=0;
+  TABS[tab].sections.forEach(s=>s.blocks.forEach(b=>{
+    if(b.faded||b.cat==='skip') return; total++; if(d.has(b.id)) dn++;
+  }));
+  const ov=total>0?Math.min(100,Math.round(dn/total*100)):0;
+  const ob=document.getElementById('ov-bar'), op=document.getElementById('ov-pct');
+  if(ob) ob.style.width=ov+'%';
+  if(op) op.textContent=ov===100?'🎉 100%':ov+'%';
+  renderRings(cnts,tots);
+}
+
+function renderRings(cnts,tots){
+  const cats=[{k:'cat',c:'#9c8ae0',l:'CAT'},{k:'upsc',c:'#88c06a',l:'UPSC'},{k:'etsy',c:'#e0a050',l:'Etsy'},{k:'health',c:'#66bb9a',l:'Run'},{k:'work',c:'#a0a8b8',l:'Work'}];
+  const ctr=document.getElementById('rings'); ctr.innerHTML='';
+  cats.forEach(({k,c,l})=>{
+    const n=cnts[k]||0, t=tots[k]||0; if(!t) return;
+    const p=Math.min(1,n/t), r=18, cx=22, cy=22, ci=2*Math.PI*r, dash=p*ci, gap=ci-dash;
+    const item=document.createElement('div'); item.className='ring-item';
+    item.innerHTML=`<svg width="44" height="44" viewBox="0 0 44 44">
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(180,155,220,0.18)" stroke-width="4"/>
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${c}" stroke-width="4"
+        stroke-dasharray="${dash.toFixed(2)} ${gap.toFixed(2)}" stroke-linecap="round"
+        transform="rotate(-90 ${cx} ${cy})" style="transition:stroke-dasharray 0.55s cubic-bezier(0.34,1.2,0.64,1)"/>
+      <text x="${cx}" y="${cy+1}" text-anchor="middle" dominant-baseline="middle"
+        style="font-size:10px;font-weight:600;fill:rgba(45,16,88,0.75);font-family:'DM Sans',sans-serif">${n}/${t}</text>
+    </svg><div class="ring-lbl">${l}</div>`;
+    ctr.appendChild(item);
+  });
+}
+
+/* ════════════════════════════
+   HISTORY RENDER
+════════════════════════════ */
+function renderHistory(){
+  const entries=loadHistory();
+  const ctr=document.getElementById('hist-ctr');
+  if(!entries.length){ ctr.innerHTML='<div class="hist-empty">No history yet. Tick blocks to start!</div>'; return; }
+  ctr.innerHTML='';
+  entries.slice(0,20).forEach(e=>{
+    const row=document.createElement('div'); row.className='hist-row';
+    row.innerHTML=`<div><div class="hist-date">${e.date}</div><div class="hist-meta">${e.label} · ${e.done}/${e.total} blocks</div></div><div class="hist-pct">${e.pct===100?'🎉 ':''}${e.pct}%</div>`;
+    ctr.appendChild(row);
+  });
+}
+
+/* ════════════════════════════
+   AI ADVISOR — smart offline engine
+   Reads actual schedule state, time of day, what's done/pending,
+   and generates context-aware advice without any API.
+════════════════════════════ */
+function fillQ(text){ document.getElementById('adv-ta').value=text; }
+
+function runAdvisor(){
+  const input=document.getElementById('adv-ta').value.trim();
+  if(!input){ document.getElementById('adv-ta').focus(); return; }
+
+  const thinking=document.getElementById('adv-thinking');
+  const out=document.getElementById('adv-out');
+  thinking.classList.add('show'); out.classList.remove('show'); out.innerHTML='';
+
+  setTimeout(()=>{
+    const advice=generateAdvice(input);
+    thinking.classList.remove('show');
+    out.innerHTML=advice.text+`<div class="adv-source">${advice.source}</div>`;
+    out.classList.add('show');
+  }, 900);
+}
+
+function generateAdvice(input){
+  const now=new Date();
+  const h=now.getHours(), mins=h*60+now.getMinutes();
+  const tab=TABS[curTab], d=done[curTab];
+
+  // what's done and pending
+  const doneBlocks=[], pendingBlocks=[];
+  tab.sections.forEach(s=>s.blocks.forEach(b=>{
+    if(b.faded||b.cat==='skip') return;
+    (d.has(b.id)?doneBlocks:pendingBlocks).push(b);
+  }));
+
+  const doneCats=new Set(doneBlocks.map(b=>b.cat));
+  const pendingCats=new Set(pendingBlocks.map(b=>b.cat));
+  const il=input.toLowerCase();
+
+  // helpers
+  const hasBlock=(id)=>pendingBlocks.some(b=>b.id===id)||doneBlocks.some(b=>b.id===id);
+  const isDone=(id)=>d.has(id);
+  const pendingByTag=(tag)=>pendingBlocks.filter(b=>b.tag===tag||b.cat===tag);
+  const timeLeft=(endMin)=>Math.max(0,endMin-mins);
+  const fmt=(m)=>{ const hh=Math.floor(m/60), mm=m%60; return mm?`${hh}h ${mm}m`:`${hh}h`; };
+
+  // calculate what's genuinely still possible
+  const catPending={cat:pendingBlocks.filter(b=>b.cat==='cat').length, upsc:pendingBlocks.filter(b=>b.cat==='upsc').length, work:pendingBlocks.filter(b=>b.cat==='work').length, etsy:pendingBlocks.filter(b=>b.cat==='etsy').length, health:pendingBlocks.filter(b=>b.cat==='health').length};
+  const totalPending=pendingBlocks.length;
+  const totalDone=doneBlocks.length;
+  const pct=Math.round(totalDone/(totalDone+totalPending||1)*100);
+
+  let advice='', source='Analysed using your actual schedule state';
+
+  // ── SITUATION MATCHING ──
+
+  if(il.includes('meeting') && (il.includes('late')||il.includes('ran')||il.includes('long'))){
+    const catLeft=catPending.cat, etsyLeft=catPending.etsy, upscLeft=catPending.upsc;
+    advice=`📋 Meeting overrun recovery plan:\n\n`;
+    if(mins<930){ advice+=`You still have the 3:30–4:30 PM Quant slot — that's your most important rescue block. Protect it absolutely.\n\n`; }
+    if(catLeft>0) advice+=`CAT: ${catLeft} block${catLeft>1?'s':''} pending. ${mins<930?'Quant at 3:30 is non-negotiable.':'Push any remaining CAT to tomorrow — don\'t compress it tonight.'}\n`;
+    if(etsyLeft>0) advice+=`Etsy: Still mandatory at 7 PM. Don't let work overflow eat this.\n`;
+    if(upscLeft>0) advice+=`UPSC (Laxmikant): 9:30 PM is light reading — easy to do even when tired.\n`;
+    advice+=`\nThe rest of today is fully salvageable. You've already done ${totalDone} blocks (${pct}%).`;
+    advice+=`\n\n💪 One recovery decision made well is worth ten perfect days.`;
+  }
+  else if(il.includes('6:30')||il.includes('late wake')||(il.includes('woke')&&(il.includes('late')||il.includes('6')))){
+    advice=`⏰ Late wake recovery (6:30 AM start):\n\n`;
+    advice+=`Switch to the "Late wake" tab — that's exactly what it's for.\n\n`;
+    advice+=`Key rule: LRDI is now your 3:30–4:30 PM block. Don't try to squeeze it into the morning.\n\n`;
+    advice+=`Morning sequence still works: Hindu → Run → VARC lecture → Zero to One. Just starts 1 hour later.\n\n`;
+    if(!isDone('varc')) advice+=`VARC lecture: still completable before 10 AM if you start now.\n`;
+    advice+=`\nEverything from 10 AM onwards is identical to the standard day. You lose only LRDI timing — and that's already covered.\n\n💪 A 1-hour late start is not a lost day. It's a delayed start.`;
+  }
+  else if(il.includes('lrdi')&&(il.includes('skip')||il.includes('miss')||il.includes('didn'))){
+    const lrdiPending=!isDone('lrdi');
+    advice=`🔁 LRDI recovery:\n\n`;
+    if(mins<930){ advice+=`Buffer slot: 3:30–4:30 PM is your rescue slot today. LRDI goes there — that's the whole point of that buffer.\n\n`; }
+    else if(mins<1110){ advice+=`You're past 3:30 PM. If the buffer is still free, do LRDI now — even 45 minutes of sets is better than zero.\n\n`; }
+    else { advice+=`It's evening. Don't force LRDI at this hour — carry it forward to tomorrow's morning slot. Tired LRDI is low-quality practice.\n\n`; }
+    advice+=`Remember: you never truly skip LRDI, you only delay it. The carry-forward rule is built into your system.\n\n`;
+    advice+=`Etsy and Laxmikant are still on for tonight — those don't change.\n\n💪 The buffer slot exists for exactly this. Use it.`;
+  }
+  else if(il.includes('run')&&(il.includes('skip')||il.includes('miss')||il.includes('didn'))){
+    advice=`🏃 Missed morning run — here's the fix:\n\n`;
+    if(mins<1110){ advice+=`Evening walk at 6:30 PM is your substitute today. Add 10 extra minutes to it — makes it a 40-min walk instead of 30.\n\n`; }
+    else { advice+=`You've passed the evening walk window. That's okay — a rest day occasionally is fine.\n\n`; }
+    advice+=`Your study schedule is completely unaffected by this. Run and study are independent — don't let one missed run cascade.\n\n`;
+    advice+=`Tomorrow: set your alarm for 6:00 AM specifically for the run. Put it before the newspaper if needed.\n\n💪 One missed run doesn't break the habit. Ten in a row does. Tomorrow matters more.`;
+  }
+  else if(il.includes('low energy')||il.includes('tired')||il.includes('exhausted')||il.includes('fatigue')){
+    advice=`🌿 Low energy protocol:\n\n`;
+    advice+=`Non-negotiables today (do these even when tired):\n`;
+    advice+=`• Laxmikant at 9:30 PM — it's passive reading, perfect for low-energy evenings\n`;
+    advice+=`• Etsy at 7 PM — even 1 hour of listing is better than zero\n`;
+    advice+=`• The Hindu — you've already built this habit, don't break the streak\n\n`;
+    advice+=`Protect but adapt:\n`;
+    advice+=`• VARC lecture: watch it, even if you don't take notes today\n`;
+    advice+=`• Quant: do just 20 problems instead of a full hour. Partial counts.\n`;
+    advice+=`• LRDI: one set instead of a full hour is fine\n\n`;
+    advice+=`Skip freely today:\n• Buffer slot — rest is the buffer on low-energy days\n\n💪 Low energy is data, not failure. Protect your floor, not your ceiling.`;
+  }
+  else if(il.includes('motivat')||il.includes('boost')||il.includes('stuck')||il.includes('can\'t focus')){
+    const dStr=todayStr();
+    advice=`⚡ Motivation reset:\n\n`;
+    advice+=`You've completed ${totalDone} blocks today (${pct}%). That's real.\n\n`;
+    if(totalPending>0){
+      const next=pendingBlocks[0];
+      advice+=`Your next block: "${next.title}" at ${next.t}.\n`;
+      advice+=`Don't think about the full day — just start that one block.\n\n`;
+    }
+    advice+=`Your stack right now:\n`;
+    advice+=`• CAT: ${catPending.cat} block${catPending.cat!==1?'s':''} left\n`;
+    advice+=`• UPSC: ${catPending.upsc} block${catPending.upsc!==1?'s':''} left\n`;
+    advice+=`• Etsy: ${catPending.etsy===0?'✅ done':'1 block left'}\n`;
+    if(catPending.health>0) advice+=`• Health: ${catPending.health} block left\n`;
+    advice+=`\nCAT prep is 1.5–2 years. UPSC is 2.5–3 years. Each block today is a compound interest payment to your future self.\n\n💪 You don't need to feel motivated. You just need to start. The feeling follows the action.`;
+  }
+  else if(il.includes('quant')&&(il.includes('skip')||il.includes('miss')||il.includes('didn'))){
+    advice=`📐 Missed Quant recovery:\n\n`;
+    if(mins<1050){ advice+=`Buffer slot (4:30–5:30 PM) is available — move Quant there now.\n\n`; }
+    else if(mins<1140){ advice+=`Evening window exists before Etsy — do a compressed 30-minute Quant session at 7 PM before Etsy.\n\n`; }
+    else{ advice+=`It's evening — carry Quant forward to tomorrow. Don't do heavy arithmetic when tired.\n\n`; }
+    advice+=`Apply the carry-forward rule: add "Quant carry" to tomorrow's 8:10 AM slot (after Zero to One).\n\n`;
+    advice+=`Laxmikant tonight is untouched — UPSC prep doesn't depend on Quant timing.\n\n💪 A missed Quant session carried forward is better than a forced session done badly.`;
+  }
+  else if(il.includes('etsy')&&(il.includes('skip')||il.includes('no time')||il.includes('miss'))){
+    advice=`🛍️ Etsy is mandatory — here's how to protect it:\n\n`;
+    advice+=`Minimum viable Etsy (when time is short): 45 minutes of listing/posting only. Skip the design work, just publish.\n\n`;
+    if(mins<1140){ advice+=`7:00–9:00 PM is still ahead. That's your block — protect it.\n\n`; }
+    advice+=`What to do in 45 mins: Update 2–3 listings + post one social update. That's enough to keep the shop active.\n\n`;
+    advice+=`Etsy is your only current income-generating side asset. Even on bad days, a minimum Etsy session protects the habit and the algorithm.\n\n💪 The 2-hour target is ideal. The 45-minute minimum is sacred.`;
+  }
+  else{
+    // General fallback — reads current state intelligently
+    advice=`📊 Current day analysis (${TABS[curTab].label} schedule):\n\n`;
+    advice+=`Completed: ${totalDone} blocks (${pct}%)\nPending: ${totalPending} blocks\n\n`;
+
+    if(totalPending===0){
+      advice+=`🎉 You've completed everything on this tab! That's a perfect day.\n\nIf it's before 11 PM, use remaining time to review what you learned today or prep tomorrow.\n\n💪 This is what a 100% day looks like. Lock in the feeling.`;
+    } else {
+      const urgent=pendingBlocks.filter(b=>b.s&&b.s<=mins+60&&b.e&&b.e>mins);
+      const upcoming=pendingBlocks.filter(b=>b.s&&b.s>mins&&b.s<=mins+120);
+      if(urgent.length) advice+=`⚡ Active now: ${urgent.map(b=>b.title).join(', ')}\n\n`;
+      if(upcoming.length) advice+=`Coming up next: ${upcoming.map(b=>`${b.title} at ${b.t}`).join(', ')}\n\n`;
+
+      const priorities=['cat','upsc','etsy','health'];
+      priorities.forEach(cat=>{
+        if(catPending[cat]>0){
+          const names=pendingBlocks.filter(b=>b.cat===cat).map(b=>b.title);
+          advice+=`${cat==='cat'?'📚':cat==='upsc'?'⚖️':cat==='etsy'?'🛍️':'🏃'} ${TABS[curTab].label==='Standard'?cat.toUpperCase():cat}: ${names.join(', ')}\n`;
+        }
+      });
+      advice+=`\nFocus on these in order. Don't let work overrun your 3:30 PM Quant slot.\n\n💪 ${totalDone} done. ${totalPending} to go. You've got this.`;
+    }
+  }
+
+  return { text: advice, source: `Based on your live schedule state — ${totalDone}/${totalDone+totalPending} blocks done today` };
+}
+
+/* ════════════════════════════
+   EDIT MODE
+════════════════════════════ */
+function toggleEdit(){
+  editMode=!editMode;
+  const btn=document.getElementById('edit-btn');
+  const sub=document.getElementById('sh-sub');
+  if(editMode){ btn.textContent='✅ Done'; btn.classList.add('on'); sub.textContent='Edit mode · ✏️ to edit · 🗑️ to delete · + to add'; applyEditMode(true); }
+  else { btn.textContent='✏️ Edit'; btn.classList.remove('on'); sub.textContent='Tap any block to mark it done'; applyEditMode(false); document.querySelectorAll('.bef.open').forEach(f=>f.classList.remove('open')); document.querySelectorAll('.add-form.open').forEach(f=>f.classList.remove('open')); }
+}
+function applyEditMode(on){
+  document.querySelectorAll(`#p-${curTab} .s-block.can-tick`).forEach(b=>b.classList.toggle('editing',on));
+  document.querySelectorAll(`#p-${curTab} .add-row`).forEach(r=>r.classList.toggle('show',on));
+}
+function openBef(e,id){ e.stopPropagation(); document.getElementById(`bef-${id}`).classList.add('open'); }
+function closeBef(e,id){ e.stopPropagation(); document.getElementById(`bef-${id}`).classList.remove('open'); }
+function saveBef(e,id,tab){
+  e.stopPropagation();
+  const t=document.getElementById(`bef-t-${id}`).value.trim();
+  const tm=document.getElementById(`bef-tm-${id}`).value.trim();
+  const tg=document.getElementById(`bef-tg-${id}`).value.trim().toUpperCase();
+  const s=document.getElementById(`bef-s-${id}`).value.trim();
+  TABS[tab].sections.forEach(sec=>sec.blocks.forEach(b=>{ if(b.id===id){ if(t) b.title=t; if(tm) b.t=tm; if(tg) b.tag=tg; b.sub=s; } }));
+  render(); if(editMode) applyEditMode(true); updateProgress();
+}
+function delBlock(e,id,tab){
+  e.stopPropagation();
+  if(!confirm('Remove this block?')) return;
+  TABS[tab].sections.forEach(s=>{ s.blocks=s.blocks.filter(b=>b.id!==id); });
+  done[tab].delete(id); persist(tab);
+  render(); if(editMode) applyEditMode(true); updateProgress();
+}
+function openAdd(tab,si){ addSec=si; document.getElementById(`af-${tab}`).classList.add('open'); setTimeout(()=>document.getElementById(`af-t-${tab}`)?.focus(),50); }
+function closeAdd(tab){ document.getElementById(`af-${tab}`).classList.remove('open'); addSec=null; }
+function saveAdd(tab){
+  const title=document.getElementById(`af-t-${tab}`).value.trim(); if(!title) return;
+  const tm=document.getElementById(`af-tm-${tab}`).value.trim()||'—';
+  const tg=document.getElementById(`af-tg-${tab}`).value.trim().toUpperCase()||'TASK';
+  const cat=document.getElementById(`af-c-${tab}`).value;
+  const cm={cat:'c-varc',upsc:'c-upsc',work:'c-work',etsy:'c-etsy',health:'c-health',rest:'c-rest'};
+  TABS[tab].sections[addSec??0].blocks.push({id:`cx-${Date.now()}`,cat,clr:cm[cat]||'c-rest',t:tm,title,sub:'',tag:tg});
+  closeAdd(tab); render(); if(editMode) applyEditMode(true); updateProgress();
+}
+
+/* ════════════════════════════
+   NOW HIGHLIGHT
+════════════════════════════ */
+function highlightNow(){
+  const m=new Date().getHours()*60+new Date().getMinutes();
+  document.querySelectorAll('.s-block[data-s]').forEach(b=>{
+    const s=+b.dataset.s, e=+b.dataset.e;
+    const badge=b.querySelector('.now-badge');
+    const isNow=m>=s&&m<e;
+    b.classList.toggle('active-now',isNow&&!b.classList.contains('done'));
+    if(badge) badge.style.display=isNow?'inline-flex':'none';
+  });
+}
+
+/* ════════════════════════════
+   CLOCK
+════════════════════════════ */
+function tickClock(){
+  const n=new Date(); let h=n.getHours(), m=n.getMinutes();
+  const ap=h>=12?'PM':'AM'; h=h%12||12;
+  document.getElementById('ch').textContent=h;
+  document.getElementById('cm').textContent=String(m).padStart(2,'0');
+  document.getElementById('ampm').textContent=ap;
+  greet(n.getHours()); highlightNow();
+}
+tickClock(); setInterval(tickClock,10000);
+setInterval(()=>{ const c=document.getElementById('colon'); c.style.opacity=c.style.opacity==='0.12'?'0.28':'0.12'; },900);
+
+(()=>{
+  const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const mths=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const n=new Date();
+  document.getElementById('date-line').textContent=`${days[n.getDay()]}, ${mths[n.getMonth()]} ${n.getDate()}`;
+})();
+
+function greet(h){
+  const m=[[0,5,'Still up, Divam? Rest matters.'],[5,9,'Good morning, Divam. Today is yours.'],[9,12,'Morning block active. Keep going.'],[12,14,'Midday. Rest, then afternoon push.'],[14,18,'Afternoon focus. Stay sharp, Divam.'],[18,20,'Evening. Etsy block soon.'],[20,22,'Evening grind. Finish strong.'],[22,24,'Wind down. Phone down by 11.']];
+  for(const[a,b,t] of m) if(h>=a&&h<b){ document.getElementById('greeting').textContent=t; break; }
+}
+
+/* ════════════════════════════
+   ACCORDION
+════════════════════════════ */
+const accState={adv:false,hist:false};
+function toggleAcc(id){
+  accState[id]=!accState[id];
+  document.getElementById(`${id}-body`).classList.toggle('open',accState[id]);
+  document.getElementById(`${id}-arrow`).classList.toggle('open',accState[id]);
+  if(id==='hist'&&accState[id]) renderHistory();
+}
+
+/* ════════════════════════════
+   QUOTES
+════════════════════════════ */
+const QQ=[
+  {t:'"Discipline is choosing between what you want now and what you want most."',a:'Abraham Lincoln'},
+  {t:'"The secret of getting ahead is getting started."',a:'Mark Twain'},
+  {t:'"Small daily improvements lead to staggering long-term results."',a:'Robin Sharma'},
+  {t:'"An investment in knowledge pays the best interest."',a:'Benjamin Franklin'},
+  {t:'"Success is the sum of small efforts repeated day in and day out."',a:'Robert Collier'},
+  {t:'"Push yourself, because no one else is going to do it for you."',a:'Unknown'},
+  {t:'"Work hard in silence, let success make the noise."',a:'Frank Ocean'},
+  {t:'"Every day is a chance to be better than yesterday."',a:'Unknown'},
+];
+let qi=0;
+function rotQ(){ qi=(qi+1)%QQ.length; const t=document.getElementById('q-text'),a=document.getElementById('q-author'); t.style.opacity=0;a.style.opacity=0; setTimeout(()=>{ t.textContent=QQ[qi].t; a.textContent='— '+QQ[qi].a; t.style.opacity=1;a.style.opacity=1; },500); }
+setInterval(rotQ,12000);
+
+/* ════════════════════════════
+   PWA
+════════════════════════════ */
+let dp=null;
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault(); dp=e;
+  const b=document.createElement('div'); b.className='install-banner';
+  b.textContent='📱 Add to Home Screen';
+  b.onclick=async()=>{ dp.prompt(); const{outcome}=await dp.userChoice; b.remove(); dp=null; };
+  document.body.appendChild(b); setTimeout(()=>b.remove(),10000);
+});
+
+/* ════════════════════════════
+   ENTER KEY FOR ADVISOR
+════════════════════════════ */
+document.addEventListener('DOMContentLoaded',()=>{
+  const ta=document.getElementById('adv-ta');
+  if(ta) ta.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();runAdvisor();} });
+});
+
+/* ════════════════════════════
+   INIT
+════════════════════════════ */
+render();
+updateProgress();
+renderHistory();
+</script>
+</body>
+</html>
